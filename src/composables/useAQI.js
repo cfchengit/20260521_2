@@ -7,6 +7,9 @@
 // ════════════════════════════════════════════════════════
 
 import { ref, computed } from 'vue'
+// 使用 Vite 的 ?raw 語法，直接將根目錄的 CSV 檔案以字串形式載入
+// 這樣不需要透過 fetch，也不用管檔案有沒有放在 public 資料夾中了
+import csvRawData from '../../Preview_Data.csv?raw'
 
 // ── AQI 等級定義 ──────────────────────────────────────
 export const AQI_LEVELS = [
@@ -62,12 +65,9 @@ export function useAQI() {
     error.value     = null
 
     try {
-      // 改為抓取本地端的 Preview_Data.csv 檔案
-      const res = await fetch('Preview_Data.csv')
+      // 直接讀取上方引入的 CSV 字串內容
+      const text = csvRawData
 
-      if (!res.ok) throw new Error(`HTTP ${res.status}`)
-
-      const text = await res.text()
       // 移除可能存在的 BOM (Byte Order Mark) 並以換行符號切割
       const cleanText = text.replace(/^\uFEFF/, '')
       const lines = cleanText.trim().split(/\r?\n/)
