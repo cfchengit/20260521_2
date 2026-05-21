@@ -56,7 +56,7 @@
         </div>
 
         <!-- 狀態訊息 -->
-        <div v-if="isLoading" class="status loading">📡 正在從 CSV 檔案載入空氣品質資料...</div>
+        <div v-if="isLoading" class="status loading">📡 正在從環境部載入空氣品質資料...</div>
         <div v-else-if="error" class="status error">❌ {{ error }}</div>
         <div v-else-if="stations.length > 0" class="status success">
           ✅ 共 {{ filteredStations.length }} 個測站・全台平均 AQI：

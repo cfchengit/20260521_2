@@ -7,8 +7,7 @@
 // ════════════════════════════════════════════════════════
 
 import { ref, computed } from 'vue'
-// 使用 Vite 的 ?raw 語法，直接將根目錄的 CSV 檔案以字串形式載入
-// 這樣不需要透過 fetch，也不用管檔案有沒有放在 public 資料夾中了
+import axios from 'axios'
 import csvRawData from '../../Preview_Data.csv?raw'
 
 // ── AQI 等級定義 ──────────────────────────────────────
@@ -64,20 +63,26 @@ export function useAQI() {
     isLoading.value = true
     error.value     = null
 
-    try {
-      // 直接讀取上方引入的 CSV 字串內容
-      const text = csvRawData
+    let records = []
 
-      // 移除可能存在的 BOM (Byte Order Mark) 並以換行符號切割
-      const cleanText = text.replace(/^\uFEFF/, '')
+    try {
+      // 1. 優先嘗試使用 axios 獲取環境部即時空氣品質資料
+      const response = await axios.get('https://data.moenv.gov.tw/api/v2/aqx_p_432', {
+        params: {
+          api_key: 'e8dd42e6-9b8b-43f8-991e-b3dee723a52d', // 政府 Open Data 提供之公用金鑰
+          limit: 1000,
+          format: 'JSON'
+        }
+      })
+      records = response.data.records || []
+    } catch (apiErr) {
+      console.warn('線上 API 獲取失敗 (可能是公用金鑰額度用盡)，自動切換至本地 CSV 備用資料。', apiErr)
+      
+      // 2. 若 API 失敗（例如額度已滿），自動備援：解析本地端的 Preview_Data.csv
+      const cleanText = csvRawData.replace(/^\uFEFF/, '')
       const lines = cleanText.trim().split(/\r?\n/)
-      
-      if (lines.length < 2) throw new Error('CSV 檔案為空或格式錯誤')
-      
-      // 取出標題列並全部轉小寫，確保相容後續欄位讀取
       const headers = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim().toLowerCase())
-      
-      const records = lines.slice(1).map(line => {
+      records = lines.slice(1).map(line => {
         const values = line.split(',')
         const obj = {}
         headers.forEach((header, i) => {
@@ -85,6 +90,9 @@ export function useAQI() {
         })
         return obj
       })
+    }
+
+    try {
 
       // 整理資料，過濾無座標的站點（注意：新版 API 欄位已改為全小寫）
       stations.value = records
